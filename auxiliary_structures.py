@@ -98,6 +98,18 @@ class Vertex:
             return False
 
 
+class Cell:
+    def __init__(self, typ, value):
+        self.type = typ  # 1 for shift and 0 for reduce
+        self.value = value
+
+    def __eq__(self, other):
+        if self.type == other.type and self.value == other.value:
+            return True
+        else:
+            return False
+
+
 def get_key(val, my_dict):
     for key, value in my_dict.items():
         if val == value:

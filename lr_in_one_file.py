@@ -101,6 +101,18 @@ class Vertex:
             return False
 
 
+class Cell:
+    def __init__(self, typ, value):
+        self.type = typ  # 1 for shift and 0 for reduce
+        self.value = value
+
+    def __eq__(self, other):
+        if self.type == other.type and self.value == other.value:
+            return True
+        else:
+            return False
+
+
 def get_key(val, my_dict):
     for key, value in my_dict.items():
         if val == value:
@@ -122,9 +134,9 @@ class LR1_Parser:
         self.non_terms = non_terms
         self.non_terms.append("&")
         self.rules = dict()
-        self.Buildrules(start, list(rules_list))
+        self.buildrules(start, list(rules_list))
         self.first = dict()
-        self.Build_first()
+        self.build_first()
         self.vertices = dict()
         self.stack = []
         item = state("&", start, 0, {"$"}, 0)
@@ -133,9 +145,9 @@ class LR1_Parser:
         while self.stack:
             self.action(self.stack[0][0], self.stack[0][1])
             self.stack.pop(0)
-        self.Build_table()
+        self.build_table()
 
-    def Build_first(self):
+    def build_first(self):
         for sym in self.non_terms:
             self.first[sym] = set()
         for sym in self.non_terms:
@@ -173,7 +185,7 @@ class LR1_Parser:
                 if char not in non_terms and char not in terms:
                     raise RuntimeError(f"Symbol '{char}' is not in symbols list.")
 
-    def Buildrules(self, start, rules_list):
+    def buildrules(self, start, rules_list):
         for i in self.non_terms:
             self.rules[i] = set()
         for i in range(len(rules_list)):
@@ -203,11 +215,11 @@ class LR1_Parser:
                     if current_state.next_sym() in self.non_terms:
                         States["todo"].add(
                             state(
-                                rule.left,
-                                rule.right,
-                                0,
-                                self.first[current_state.next_sym()],
-                                rule.id,
+                                left=rule.left,
+                                right=rule.right,
+                                dot_pos=0,
+                                follow=self.first[current_state.next_sym()],
+                                id=rule.id,
                             )
                         )
                     else:
@@ -224,10 +236,9 @@ class LR1_Parser:
         return States["done"]
 
     def action(self, vertex, parent_ind):
-        v1 = deepcopy(vertex)
         for term in self.terms:
             new_states = set()
-            for state in v1.states:
+            for state in vertex.states:
                 if state.dot_val == term:
                     new_states.update(self.build_closure(state.move_dot()))
             if new_states:
@@ -241,10 +252,9 @@ class LR1_Parser:
                     self.vertices[parent_ind].routines[term] = get_key(
                         Vertex(new_states), self.vertices
                     )
-        v2 = deepcopy(vertex)
         for nterm in self.non_terms:
             new_states = set()
-            for state in v2.states:
+            for state in vertex.states:
                 if state.dot_val == nterm:
                     new_states.update(self.build_closure(state.move_dot()))
             if new_states:
@@ -258,25 +268,23 @@ class LR1_Parser:
                     self.vertices[parent_ind].routines[nterm] = get_key(
                         Vertex(new_states), self.vertices
                     )
-        v3 = deepcopy(vertex)
-        for state in v3.states:
+        for state in vertex.states:
             if state.is_empty():
                 self.vertices[parent_ind].empties.add(state)
 
-    def Build_table(self):
+    def build_table(self):
         for key, value in self.vertices.items():
             self.table[key] = dict()
-            if value.routines:
-                self.table[key] = value.routines
+            for route, dest in value.routines.items():
+                self.table[key][route] = Cell(1, dest)
         for key, value in self.vertices.items():
             for empty in value.empties:
-                for r in empty.follow:
-                    if (
-                        r in self.table[key].keys()
-                        and self.table[key][r] != f"r{empty.id}"
+                for rule in empty.follow:
+                    if rule in self.table[key].keys() and self.table[key][rule] != Cell(
+                        0, empty.id
                     ):
                         raise RuntimeError("Conflict, grammar is not LR(1).")
-                    self.table[key][r] = f"r{empty.id}"
+                    self.table[key][rule] = Cell(0, empty.id)
 
     def predict(self, word):
         stack = [0]
@@ -287,14 +295,14 @@ class LR1_Parser:
                 row = int(row)
                 if not letter in self.table[row].keys():
                     return False
-                dest = str(self.table[row][letter])
-                if (dest, letter) == ("r0", "$"):
+                dest = self.table[row][letter]
+                if (dest, letter) == (Cell(0, 0), "$"):
                     return True
-                if dest.isdigit():
+                if dest.type:
                     stack.append(letter)
-                    stack.append(dest)
+                    stack.append(dest.value)
                     break
-                destid = int(dest[1:])
+                destid = int(dest.value)
                 reduce_items = list(get_rule_by_id(self.rules, destid).right)
                 if reduce_items:
                     if len(stack) <= len(reduce_items) * 2:
@@ -310,7 +318,7 @@ class LR1_Parser:
                 if not str(self.table[current_row][rule_left]):
                     return False
                 stack.append(rule_left)
-                stack.append(str(self.table[current_row][rule_left]))
+                stack.append(self.table[current_row][rule_left].value)
         return False
 
 
