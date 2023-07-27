@@ -1,19 +1,33 @@
+# LR(1) Parsing
 
-# LR(1)
+To use LR(1) parsing, you can launch the program by running the following command:
 
-Launch:
-
+```
 python3 main.py
+```
 
-Launch tests:
+To launch tests and check the coverage, you can use the following command:
 
+```
 py.test --cov=lr tests/
+```
 
-***************************
-build_closure - pushes state into stack, than takes items form stack one by one...if dot_val is non-termianl, it addes all the rules which contain that letter in Left hand side into stack, than pushes our current state into "done" list.
-action - makes edges in our "automaton", it iterates over terms and pushes all states which expect that term into new vertex.Same thing with non-terms. 
-For every vertex we have list called empties, that is all the rules whose dot_pos is last.
-Build_table - Creates table from "automaton".
-predict - uses table to find out if word is in grammar.
+LR(1) parsing involves several steps:
 
+## Build Closure
 
+The `build_closure` function is used to push a state into a stack and then take items from the stack one by one. If the `dot_val` is a non-terminal, it adds all the rules which contain that letter in the left-hand side into the stack, and then pushes the current state into the "done" list.
+
+## Action
+
+The `action` function is used to make edges in our "automaton". It iterates over terms and pushes all states which expect that term into a new vertex. The same thing is done with non-terminals. 
+
+For every vertex, we have a list called `empties`, which contains all the rules whose `dot_pos` is at the last position.
+
+## Build Table
+
+The `build_table` function creates a table from the "automaton" built by the `action` function.
+
+## Predict
+
+The `predict` function uses the table to determine whether a word is in the grammar.
